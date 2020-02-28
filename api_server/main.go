@@ -13,52 +13,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type User struct {
-	Id   int64
-	Name string
-}
-
 type Token struct {
 	Token string
-}
-
-var db *sql.DB
-
-func (user *User) Create(db *sql.DB) (err error) {
-	stmtIns, err := db.Prepare("INSERT INTO users VALUES( 0, ? )") // ? = placeholder
-	if err != nil {
-		fmt.Println("Prepare")
-		panic(err.Error()) // proper error handling instead of panic in your app
-	}
-	defer stmtIns.Close()
-
-	result, err := stmtIns.Exec(user.Name)
-	if err != nil {
-		fmt.Println("Exec")
-		panic(err.Error()) // proper error handling instead of panic in your app
-	}
-
-	user.Id, err = result.LastInsertId()
-	if err != nil {
-		fmt.Println("Id")
-		panic(err.Error()) // proper error handling instead of panic in your app
-	}
-	return
-}
-
-func (user *User) Update(db *sql.DB) (err error) {
-	_, err = db.Exec("update users set name = ? where id = ?", user.Name, user.Id)
-	if err != nil {
-		fmt.Println(err.Error())
-		return err
-	}
-	return 
-}
-
-func GetPost(id int64, db *sql.DB) (user User, err error) {
-	user = User{}
-	err = db.QueryRow("select id, name from users where id=?", id).Scan(&user.Name)
-	return
 }
 
 func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -71,14 +27,14 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//fmt.Println(user.Name)
-	//fmt.Println(os.Getenv("SIGNINGKEY"))
-
 	//register in DB
-	user.Create(db)
+	err = user.Create(db)
+	if err != nil {
+		fmt.Println("can't create")
+		return
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":   user.Id,
-		"name": user.Name,
 		"nbf":  time.Now().Unix(),
 	})
 
@@ -112,9 +68,14 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		fmt.Println(claims["id"], claims["name"], claims["nbf"])
-	
-		tokenJSON, err := json.Marshal(User{Id: int64(claims["id"].(float64)), Name: claims["name"].(string)})
+		fmt.Println(claims["id"], claims["nbf"])
+		user := User{};
+		err := db.QueryRow("select id, name from users where id = ?", int64(claims["id"].(float64))).Scan(&user.Id, &user.Name)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		tokenJSON, err := json.Marshal(user)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -127,7 +88,7 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	var tmp User;
+	var tmp User
 	err := json.NewDecoder(r.Body).Decode(&tmp)
 	if err != nil {
 		fmt.Println("can't decode")
@@ -149,7 +110,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err.Error())
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		fmt.Println(claims["id"], claims["name"], claims["nbf"])
+		fmt.Println(claims["id"], claims["nbf"])
 		user := User{Id: int64(claims["id"].(float64)), Name: tmp.Name}
 
 		err := user.Update(db)
@@ -165,27 +126,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	/*
-		db, err := sql.Open("mysql", "root:mysql@([localhost]:3306)/tech_dojo")
-		if err != nil {
-			panic(err)
-		}
 
-		err = db.Ping()
-		if err != nil {
-			panic(err.Error())
-		}
-		fmt.Println("connection is success")
-
-		user := User{Name: "koki honda"}
-
-		fmt.Println(user)
-		user.Create(db)
-		fmt.Println(user)
-
-		readUser, _ := GetPost(user.Id, db)
-		fmt.Println(readUser)
-	*/
 	var err error
 	db, err = sql.Open("mysql", "root:mysql@([localhost]:3306)/tech_dojo")
 	if err != nil {
