@@ -40,8 +40,3 @@ func (user *User) Update(db *sql.DB) (err error) {
 	return
 }
 
-func GetPost(id int64, db *sql.DB) (user User, err error) {
-	user = User{}
-	err = db.QueryRow("select id, name from users where id=?", id).Scan(&user.Name)
-	return
-}
