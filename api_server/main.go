@@ -93,14 +93,30 @@ var JwtMiddleWare = jwtmiddleware.New(jwtmiddleware.Options{
 	SigningMethod: jwt.SigningMethodHS256,
 })
 
-var GetName = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	user := r.Context().Value("user")
-	fmt.Fprintf(w, "This is an authenticated request")
-	fmt.Fprintf(w, "Clame content \n")
-	for k, v := range user.(*jwt.Token).Claims.(jwt.MapClaims) {
-		fmt.Fprintf(w, "%s :\t %#v\n", k, v)
+func GetNameHandler(w http.ResponseWriter, r *http.Request) {
+	tokenString := r.Header.Get("x-token")
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return []byte(os.Getenv("SIGNINGKEY")), nil
+	})
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		fmt.Println(claims["name"], claims["nbf"])
+		tokenJSON, err := json.Marshal(User{Name: claims["name"].(string)})
+		if err != nil {
+			fmt.Println(err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(tokenJSON)
+	} else {
+		fmt.Println(err)
 	}
-})
+}
 
 func main() {
 	/*
@@ -129,8 +145,8 @@ func main() {
 		Addr: "127.0.0.1:8080",
 	}
 
-	authname := JwtMiddleWare.Handler(GetName)
 	http.HandleFunc("/user/create", GetTokenHandler)
-	http.Handle("/user/get", authname)
+	http.HandleFunc("/user/get", GetNameHandler)
+
 	server.ListenAndServe()
 }
