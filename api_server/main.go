@@ -34,20 +34,22 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":   user.Id,
-		"nbf":  time.Now().Unix(),
+		"id":  user.Id,
+		"nbf": time.Now().Unix(),
 	})
 
 	tokenString, err := token.SignedString([]byte(os.Getenv("SIGNINGKEY")))
 	if err != nil {
 		fmt.Println("tokenString Error")
 		fmt.Println(err.Error())
+		return
 	}
 	tokenJSON, err := json.Marshal(Token{tokenString})
 
 	if err != nil {
 		fmt.Printf("Token Error")
 		fmt.Println(err.Error())
+		return
 	} else {
 		//fmt.Printf(tokenString)
 		w.Header().Set("Content-Type", "application/json")
@@ -67,9 +69,13 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 		return []byte(os.Getenv("SIGNINGKEY")), nil
 	})
 
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		fmt.Println(claims["id"], claims["nbf"])
-		user := User{};
+		user := User{}
 		err := db.QueryRow("select id, name from users where id = ?", int64(claims["id"].(float64))).Scan(&user.Id, &user.Name)
 		if err != nil {
 			fmt.Println(err.Error())
@@ -78,12 +84,11 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 		tokenJSON, err := json.Marshal(user)
 		if err != nil {
 			fmt.Println(err)
+			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		w.Write(tokenJSON)
-	} else {
-		fmt.Println(err)
 	}
 }
 
@@ -108,6 +113,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		fmt.Println(err.Error())
+		return
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		fmt.Println(claims["id"], claims["nbf"])

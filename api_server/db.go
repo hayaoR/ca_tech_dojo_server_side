@@ -39,4 +39,3 @@ func (user *User) Update(db *sql.DB) (err error) {
 	}
 	return
 }
-
