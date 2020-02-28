@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	jwt "github.com/dgrijalva/jwt-go"
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -85,6 +86,22 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var JwtMiddleWare = jwtmiddleware.New(jwtmiddleware.Options{
+	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("SIGNINGKEY")), nil
+	},
+	SigningMethod: jwt.SigningMethodHS256,
+})
+
+var GetName = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user")
+	fmt.Fprintf(w, "This is an authenticated request")
+	fmt.Fprintf(w, "Clame content \n")
+	for k, v := range user.(*jwt.Token).Claims.(jwt.MapClaims) {
+		fmt.Fprintf(w, "%s :\t %#v\n", k, v)
+	}
+})
+
 func main() {
 	/*
 		db, err := sql.Open("mysql", "root:mysql@([localhost]:3306)/tech_dojo")
@@ -97,6 +114,7 @@ func main() {
 			panic(err.Error())
 		}
 		fmt.Println("connection is success")
+
 		user := User{Name: "koki honda"}
 
 		fmt.Println(user)
@@ -111,6 +129,8 @@ func main() {
 		Addr: "127.0.0.1:8080",
 	}
 
+	authname := JwtMiddleWare.Handler(GetName)
 	http.HandleFunc("/user/create", GetTokenHandler)
+	http.Handle("/user/get", authname)
 	server.ListenAndServe()
 }
