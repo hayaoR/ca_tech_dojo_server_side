@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
 
-	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	jwt "github.com/dgrijalva/jwt-go"
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -21,6 +21,8 @@ type User struct {
 type Token struct {
 	Token string
 }
+
+var db *sql.DB
 
 func (user *User) Create(db *sql.DB) (err error) {
 	stmtIns, err := db.Prepare("INSERT INTO users VALUES( 0, ? )") // ? = placeholder
@@ -63,7 +65,10 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println(user.Name)
 	//fmt.Println(os.Getenv("SIGNINGKEY"))
 
+	//register in DB
+	user.Create(db)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id":   user.Id,
 		"name": user.Name,
 		"nbf":  time.Now().Unix(),
 	})
@@ -86,13 +91,6 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var JwtMiddleWare = jwtmiddleware.New(jwtmiddleware.Options{
-	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("SIGNINGKEY")), nil
-	},
-	SigningMethod: jwt.SigningMethodHS256,
-})
-
 func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.Header.Get("x-token")
 
@@ -105,8 +103,9 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		fmt.Println(claims["name"], claims["nbf"])
-		tokenJSON, err := json.Marshal(User{Name: claims["name"].(string)})
+		fmt.Println(claims["id"], claims["name"], claims["nbf"])
+	
+		tokenJSON, err := json.Marshal(User{Id: int64(claims["id"].(float64)), Name: claims["name"].(string)})
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -140,6 +139,12 @@ func main() {
 		readUser, _ := GetPost(user.Id, db)
 		fmt.Println(readUser)
 	*/
+	var err error
+	db, err = sql.Open("mysql", "root:mysql@([localhost]:3306)/tech_dojo")
+	if err != nil {
+		log.Fatal("unable to use data source name")
+	}
+	defer db.Close()
 
 	server := http.Server{
 		Addr: "127.0.0.1:8080",
