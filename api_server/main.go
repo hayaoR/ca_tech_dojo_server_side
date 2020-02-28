@@ -46,6 +46,15 @@ func (user *User) Create(db *sql.DB) (err error) {
 	return
 }
 
+func (user *User) Update(db *sql.DB) (err error) {
+	_, err = db.Exec("update users set name = ? where id = ?", user.Name, user.Id)
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+	return 
+}
+
 func GetPost(id int64, db *sql.DB) (user User, err error) {
 	user = User{}
 	err = db.QueryRow("select id, name from users where id=?", id).Scan(&user.Name)
@@ -117,6 +126,44 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func UpdateHandler(w http.ResponseWriter, r *http.Request) {
+	var tmp User;
+	err := json.NewDecoder(r.Body).Decode(&tmp)
+	if err != nil {
+		fmt.Println("can't decode")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	tokenString := r.Header.Get("x-token")
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return []byte(os.Getenv("SIGNINGKEY")), nil
+	})
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		fmt.Println(claims["id"], claims["name"], claims["nbf"])
+		user := User{Id: int64(claims["id"].(float64)), Name: tmp.Name}
+
+		err := user.Update(db)
+		if err != nil {
+			fmt.Println("failed to update")
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+	} else {
+		fmt.Println("token not valid")
+	}
+}
+
 func main() {
 	/*
 		db, err := sql.Open("mysql", "root:mysql@([localhost]:3306)/tech_dojo")
@@ -152,6 +199,7 @@ func main() {
 
 	http.HandleFunc("/user/create", GetTokenHandler)
 	http.HandleFunc("/user/get", GetNameHandler)
+	http.HandleFunc("/user/update", UpdateHandler)
 
 	server.ListenAndServe()
 }
