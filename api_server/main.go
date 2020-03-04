@@ -11,6 +11,7 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	_ "github.com/go-sql-driver/mysql"
+	mux "github.com/gorilla/mux"
 )
 
 type Token struct {
@@ -137,10 +138,11 @@ func execute() error {
 	server := http.Server{
 		Addr: "127.0.0.1:8080",
 	}
-
-	http.HandleFunc("/user/create", GetTokenHandler)
-	http.HandleFunc("/user/get", GetNameHandler)
-	http.HandleFunc("/user/update", UpdateHandler)
+	r := mux.NewRouter()
+	r.HandleFunc("/user/create", GetTokenHandler)
+	r.HandleFunc("/user/get", GetNameHandler)
+	r.HandleFunc("/user/update", UpdateHandler)
+	http.Handle("/", r)
 
 	if err := server.ListenAndServe(); err != nil {
 		return err
