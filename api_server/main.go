@@ -131,12 +131,11 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main() {
-
+func execute() error {
 	var err error
 	db, err = sql.Open("mysql", "root:mysql@([localhost]:3306)/tech_dojo")
 	if err != nil {
-		log.Fatal("unable to use data source name")
+		return err
 	}
 	defer db.Close()
 
@@ -148,5 +147,15 @@ func main() {
 	http.HandleFunc("/user/get", GetNameHandler)
 	http.HandleFunc("/user/update", UpdateHandler)
 
-	server.ListenAndServe()
+	if err := server.ListenAndServe(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func main() {
+	if err := execute(); err != nil {
+		log.Fatal(err)
+	}
 }
