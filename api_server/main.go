@@ -9,13 +9,19 @@ import (
 	"os"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	jwt "github.com/dgrijalva/jwt-go"
 	_ "github.com/go-sql-driver/mysql"
-	mux "github.com/gorilla/mux"
+	"github.com/gorilla/mux"
 )
 
 type Token struct {
 	Token string
+}
+
+type tomlConfig struct {
+	ServerURL      string
+	SQLConfigParam string
 }
 
 func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -113,11 +119,10 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		fmt.Println(claims["id"], claims["nbf"])
 		user := User{ID: int64(claims["id"].(float64)), Name: tmpUser.Name}
 
 		if err := user.Update(); err != nil {
-			fmt.Println("failed to update")
+			log.Println("failed to update")
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -128,15 +133,22 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func execute() error {
+	var config tomlConfig
+	if _, err := toml.DecodeFile("setting/setting.toml", &config); err != nil {
+		return err
+	}
+	fmt.Println(config.ServerURL)
+	fmt.Println(config.SQLConfigParam)
+
 	var err error
-	db, err = sql.Open("mysql", "root:mysql@([localhost]:3306)/tech_dojo")
+	db, err = sql.Open("mysql", config.SQLConfigParam)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
 	server := http.Server{
-		Addr: "127.0.0.1:8080",
+		Addr: config.ServerURL,
 	}
 	r := mux.NewRouter()
 	r.HandleFunc("/user/create", GetTokenHandler)
