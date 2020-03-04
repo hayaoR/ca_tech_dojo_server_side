@@ -28,7 +28,7 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	//register in DB
 	if err := user.Create(); err != nil {
-		fmt.Println("can't create")
+		log.Println(err.Error())
 		return
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -38,15 +38,13 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	tokenString, err := token.SignedString([]byte(os.Getenv("SIGNINGKEY")))
 	if err != nil {
-		fmt.Println("tokenString Error")
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		return
 	}
 	tokenJSON, err := json.Marshal(Token{tokenString})
 
 	if err != nil {
-		fmt.Printf("Token Error")
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		return
 	}
 
@@ -69,20 +67,19 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		fmt.Println(claims["id"], claims["nbf"])
 		user := User{}
 		err := db.QueryRow("SELECT id, name FROM users WHERE id = ?", int64(claims["id"].(float64))).Scan(&user.ID, &user.Name)
 		if err != nil {
-			fmt.Println(err.Error())
+			log.Println(err.Error())
 			return
 		}
 		tokenJSON, err := json.Marshal(user)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -92,8 +89,8 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	var tmp_user User
-	if err := json.NewDecoder(r.Body).Decode(&tmp_user); err != nil {
+	var tmpUser User
+	if err := json.NewDecoder(r.Body).Decode(&tmpUser); err != nil {
 		fmt.Println("can't decode")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -110,12 +107,12 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		return
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		fmt.Println(claims["id"], claims["nbf"])
-		user := User{ID: int64(claims["id"].(float64)), Name: tmp_user.Name}
+		user := User{ID: int64(claims["id"].(float64)), Name: tmpUser.Name}
 
 		if err := user.Update(); err != nil {
 			fmt.Println("failed to update")
@@ -124,7 +121,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 	} else {
-		fmt.Println("token not valid")
+		log.Println("token not valid")
 	}
 }
 
