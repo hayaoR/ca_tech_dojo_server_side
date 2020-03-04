@@ -32,7 +32,7 @@ func (user *User) Create() error {
 }
 
 func (user *User) Update() error {
-	_, err := db.Exec("update users set name = ? where id = ?", user.Name, user.ID)
+	_, err := db.Exec("UPDATE users SET name = ? WHERE id = ?", user.Name, user.ID)
 	if err != nil {
 		fmt.Println(err.Error())
 		return err
