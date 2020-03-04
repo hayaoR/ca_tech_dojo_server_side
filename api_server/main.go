@@ -28,7 +28,7 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
 
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		fmt.Println("can't decode")
+		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -36,6 +36,7 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	//register in DB
 	if err := user.Create(); err != nil {
 		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -46,18 +47,20 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	tokenString, err := token.SignedString([]byte(os.Getenv("SIGNINGKEY")))
 	if err != nil {
 		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 	tokenJSON, err := json.Marshal(Token{tokenString})
 
 	if err != nil {
 		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	//fmt.Printf(tokenString)
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+
+	w.WriteHeader(http.StatusOK)
 	w.Write(tokenJSON)
 
 }
@@ -75,6 +78,7 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
@@ -83,15 +87,17 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 
 		if err := user.Get(id); err != nil {
 			log.Println(err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		tokenJSON, err := json.Marshal(user)
 		if err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		w.Write(tokenJSON)
 	}
 }
@@ -116,17 +122,19 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		user := User{ID: int64(claims["id"].(float64)), Name: tmpUser.Name}
 
 		if err := user.Update(); err != nil {
-			log.Println("failed to update")
+			log.Println(err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 	} else {
 		log.Println("token not valid")
 	}
@@ -137,8 +145,6 @@ func execute() error {
 	if _, err := toml.DecodeFile("setting/setting.toml", &config); err != nil {
 		return err
 	}
-	fmt.Println(config.ServerURL)
-	fmt.Println(config.SQLConfigParam)
 
 	var err error
 	db, err = sql.Open("mysql", config.SQLConfigParam)
