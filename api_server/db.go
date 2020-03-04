@@ -6,7 +6,7 @@ import (
 )
 
 type User struct {
-	Id   int64
+	ID   int64
 	Name string
 }
 
@@ -24,7 +24,7 @@ func (user *User) Create(db *sql.DB) (err error) {
 		return err
 	}
 
-	user.Id, err = result.LastInsertId()
+	user.ID, err = result.LastInsertId()
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func (user *User) Create(db *sql.DB) (err error) {
 }
 
 func (user *User) Update(db *sql.DB) (err error) {
-	_, err = db.Exec("update users set name = ? where id = ?", user.Name, user.Id)
+	_, err = db.Exec("update users set name = ? where id = ?", user.Name, user.ID)
 	if err != nil {
 		fmt.Println(err.Error())
 		return err

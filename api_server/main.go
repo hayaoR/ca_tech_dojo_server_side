@@ -34,7 +34,7 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":  user.Id,
+		"id":  user.ID,
 		"nbf": time.Now().Unix(),
 	})
 
@@ -76,7 +76,7 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		fmt.Println(claims["id"], claims["nbf"])
 		user := User{}
-		err := db.QueryRow("select id, name from users where id = ?", int64(claims["id"].(float64))).Scan(&user.Id, &user.Name)
+		err := db.QueryRow("select id, name from users where id = ?", int64(claims["id"].(float64))).Scan(&user.ID, &user.Name)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
@@ -117,7 +117,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		fmt.Println(claims["id"], claims["nbf"])
-		user := User{Id: int64(claims["id"].(float64)), Name: tmp.Name}
+		user := User{ID: int64(claims["id"].(float64)), Name: tmp.Name}
 
 		err := user.Update(db)
 		if err != nil {
