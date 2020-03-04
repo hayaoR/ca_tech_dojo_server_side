@@ -72,8 +72,9 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		user := User{}
-		err := db.QueryRow("SELECT id, name FROM users WHERE id = ?", int64(claims["id"].(float64))).Scan(&user.ID, &user.Name)
-		if err != nil {
+		id := int64(claims["id"].(float64))
+
+		if err := user.Get(id); err != nil {
 			log.Println(err.Error())
 			return
 		}
