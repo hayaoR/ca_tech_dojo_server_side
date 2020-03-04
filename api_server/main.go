@@ -28,7 +28,7 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//register in DB
-	err = user.Create(db)
+	err = user.Create()
 	if err != nil {
 		fmt.Println("can't create")
 		return
@@ -50,12 +50,13 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Token Error")
 		fmt.Println(err.Error())
 		return
-	} else {
-		//fmt.Printf(tokenString)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-		w.Write(tokenJSON)
 	}
+
+	//fmt.Printf(tokenString)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	w.Write(tokenJSON)
+
 }
 
 func GetNameHandler(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +120,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(claims["id"], claims["nbf"])
 		user := User{ID: int64(claims["id"].(float64)), Name: tmp.Name}
 
-		err := user.Update(db)
+		err := user.Update()
 		if err != nil {
 			fmt.Println("failed to update")
 		}

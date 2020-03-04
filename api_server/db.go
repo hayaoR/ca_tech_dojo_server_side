@@ -12,7 +12,7 @@ type User struct {
 
 var db *sql.DB
 
-func (user *User) Create(db *sql.DB) (err error) {
+func (user *User) Create() error {
 	stmtIns, err := db.Prepare("INSERT INTO users VALUES( 0, ? )") // ? = placeholder
 	if err != nil {
 		return err
@@ -28,14 +28,14 @@ func (user *User) Create(db *sql.DB) (err error) {
 	if err != nil {
 		return err
 	}
-	return
+	return nil
 }
 
-func (user *User) Update(db *sql.DB) (err error) {
-	_, err = db.Exec("update users set name = ? where id = ?", user.Name, user.ID)
+func (user *User) Update() error {
+	_, err := db.Exec("update users set name = ? where id = ?", user.Name, user.ID)
 	if err != nil {
 		fmt.Println(err.Error())
 		return err
 	}
-	return
+	return nil
 }
