@@ -20,16 +20,14 @@ type Token struct {
 func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
 
-	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		fmt.Println("can't decode")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	//register in DB
-	err = user.Create()
-	if err != nil {
+	if err := user.Create(); err != nil {
 		fmt.Println("can't create")
 		return
 	}
@@ -94,9 +92,8 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	var tmp User
-	err := json.NewDecoder(r.Body).Decode(&tmp)
-	if err != nil {
+	var tmp_user User
+	if err := json.NewDecoder(r.Body).Decode(&tmp_user); err != nil {
 		fmt.Println("can't decode")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -118,10 +115,9 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		fmt.Println(claims["id"], claims["nbf"])
-		user := User{ID: int64(claims["id"].(float64)), Name: tmp.Name}
+		user := User{ID: int64(claims["id"].(float64)), Name: tmp_user.Name}
 
-		err := user.Update()
-		if err != nil {
+		if err := user.Update(); err != nil {
 			fmt.Println("failed to update")
 		}
 
