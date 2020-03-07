@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -59,7 +61,6 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-
 	w.WriteHeader(http.StatusOK)
 	w.Write(tokenJSON)
 
@@ -140,6 +141,66 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func DrawGachaHandler(w http.ResponseWriter, r *http.Request) {
+	tokenString := r.Header.Get("x-token")
+
+	_, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return []byte(os.Getenv("SIGNINGKEY")), nil
+	})
+
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	characterList, err := GetProbabilityList()
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	//ガチャをtime回引いて結果を返す。
+	times := Time{}
+	if err := json.Unmarshal(body, &times); err != nil {
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	results := Results{}
+	for i := 0; i < times.Times; i++ {
+		idx := DrawGacha(characterList)
+		character := Character{CharacterID: strconv.Itoa(idx), Name: characterList[idx].Name}
+		results.Results = append(results.Results, character)
+	}
+
+	//TODO: getしたモンスターをデータベースに登録
+
+	tokenJSON, err := json.MarshalIndent(results, "", "\t")
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(tokenJSON)
+
+}
+
 func execute() error {
 	var config tomlConfig
 	if _, err := toml.DecodeFile("setting/setting.toml", &config); err != nil {
@@ -160,6 +221,8 @@ func execute() error {
 	r.HandleFunc("/user/create", GetTokenHandler)
 	r.HandleFunc("/user/get", GetNameHandler)
 	r.HandleFunc("/user/update", UpdateHandler)
+
+	r.HandleFunc("/gacha/draw", DrawGachaHandler)
 	http.Handle("/", r)
 
 	if err := server.ListenAndServe(); err != nil {
