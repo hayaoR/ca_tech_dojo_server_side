@@ -144,7 +144,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 func DrawGachaHandler(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.Header.Get("x-token")
 
-	_, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
@@ -156,6 +156,11 @@ func DrawGachaHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	var ID int
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		ID = int(claims["id"].(float64))
 	}
 
 	characterList, err := GetProbabilityList()
@@ -187,6 +192,16 @@ func DrawGachaHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//TODO: getしたモンスターをデータベースに登録
+	for _, v := range results.Results {
+		//v.CharacterIDは数値を文字列に変換したものだから失敗しないはず
+		characterID, _ := strconv.Atoi(v.CharacterID)
+		poses := Posession{UserID: ID, CharacterID: characterID}
+		if err := poses.RegistrateOwnership(); err != nil {
+			log.Println(err.Error())
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
 
 	tokenJSON, err := json.MarshalIndent(results, "", "\t")
 	if err != nil {

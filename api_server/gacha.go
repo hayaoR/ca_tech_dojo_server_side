@@ -21,6 +21,10 @@ type CharacterProbability struct {
 	Probability int
 }
 
+type Posession struct {
+	UserID      int
+	CharacterID int
+}
 type Time struct {
 	Times int
 }
@@ -60,4 +64,11 @@ func DrawGacha(list []CharacterProbability) int {
 	idx := sort.SearchInts(boundaries, x) - 1
 
 	return idx
+}
+
+func (poses *Posession) RegistrateOwnership() error {
+	if _, err := db.Exec(`INSERT INTO characters_possession VALUES ( ?, ? )`, poses.UserID, poses.CharacterID); err != nil {
+		return err
+	}
+	return nil
 }
