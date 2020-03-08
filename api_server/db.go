@@ -5,7 +5,7 @@ import (
 )
 
 type User struct {
-	ID   int64
+	ID   int
 	Name string
 }
 
@@ -23,10 +23,12 @@ func (user *User) Create() error {
 		return err
 	}
 
-	user.ID, err = result.LastInsertId()
+	var ID int64
+	ID, err = result.LastInsertId()
 	if err != nil {
 		return err
 	}
+	user.ID = int(ID)
 	return nil
 }
 
@@ -38,7 +40,7 @@ func (user *User) Update() error {
 	return nil
 }
 
-func (user *User) Get(id int64) error {
+func (user *User) Get(id int) error {
 	if err := db.QueryRow("SELECT id, name FROM users WHERE id = ?", id).Scan(&user.ID, &user.Name); err != nil {
 		return err
 	}

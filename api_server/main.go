@@ -84,7 +84,7 @@ func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		user := User{}
-		id := int64(claims["id"].(float64))
+		id := int(claims["id"].(float64))
 
 		if err := user.Get(id); err != nil {
 			log.Println(err.Error())
@@ -127,7 +127,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		user := User{ID: int64(claims["id"].(float64)), Name: tmpUser.Name}
+		user := User{ID: int(claims["id"].(float64)), Name: tmpUser.Name}
 
 		if err := user.Update(); err != nil {
 			log.Println(err.Error())
