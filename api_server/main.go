@@ -187,11 +187,11 @@ func DrawGachaHandler(w http.ResponseWriter, r *http.Request) {
 	results := Results{}
 	for i := 0; i < times.Times; i++ {
 		idx := DrawGacha(characterList)
-		character := Character{CharacterID: strconv.Itoa(idx), Name: characterList[idx].Name}
+		character := Character{CharacterID: strconv.Itoa(characterList[idx].ID), Name: characterList[idx].Name}
 		results.Results = append(results.Results, character)
 	}
 
-	//TODO: getしたモンスターをデータベースに登録
+	//getしたモンスターをデータベースに登録
 	for _, v := range results.Results {
 		//v.CharacterIDは数値を文字列に変換したものだから失敗しないはず
 		characterID, _ := strconv.Atoi(v.CharacterID)
@@ -216,6 +216,47 @@ func DrawGachaHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func GetCharactersHandler(w http.ResponseWriter, r *http.Request) {
+	tokenString := r.Header.Get("x-token")
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return []byte(os.Getenv("SIGNINGKEY")), nil
+	})
+
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var user User
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		user.ID = int(claims["id"].(float64))
+	}
+
+	characters, err := user.GetCharacters()
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tokenJSON, err := json.MarshalIndent(characters, "", "\t")
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(tokenJSON)
+}
+
 func execute() error {
 	var config tomlConfig
 	if _, err := toml.DecodeFile("setting/setting.toml", &config); err != nil {
@@ -238,6 +279,8 @@ func execute() error {
 	r.HandleFunc("/user/update", UpdateHandler)
 
 	r.HandleFunc("/gacha/draw", DrawGachaHandler)
+
+	r.HandleFunc("/character/list", GetCharactersHandler)
 	http.Handle("/", r)
 
 	if err := server.ListenAndServe(); err != nil {

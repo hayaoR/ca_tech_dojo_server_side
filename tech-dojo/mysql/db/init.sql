@@ -25,7 +25,9 @@ insert into characters values (8,'shintaro saito', 30);
 insert into characters values (9,'yuki sasaki', 50); 
 
 create table characters_possession (
+    usercharacterid int not null auto_increment,
     userid int,
-    characterid int
+    characterid int,
+    primary key (usercharacterid)
 );
 
