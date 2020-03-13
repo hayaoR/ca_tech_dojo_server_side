@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	jwt "github.com/dgrijalva/jwt-go"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
@@ -67,16 +68,9 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetNameHandler(w http.ResponseWriter, r *http.Request) {
-	tokenString := r.Header.Get("x-token")
+	token := r.Context().Value("user")
 
-	token, err := auth(tokenString)
-
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+	if claims, ok := token.(*jwt.Token).Claims.(jwt.MapClaims); ok && token.(*jwt.Token).Valid {
 		user := User{}
 		id := int(claims["id"].(float64))
 
@@ -105,16 +99,9 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenString := r.Header.Get("x-token")
+	token := r.Context().Value("user")
 
-	token, err := auth(tokenString)
-
-	if err != nil {
-		log.Println(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+	if claims, ok := token.(*jwt.Token).Claims.(jwt.MapClaims); ok && token.(*jwt.Token).Valid {
 		user := User{ID: int(claims["id"].(float64)), Name: tmpUser.Name}
 
 		if err := user.Update(); err != nil {
@@ -130,18 +117,10 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func DrawGachaHandler(w http.ResponseWriter, r *http.Request) {
-	tokenString := r.Header.Get("x-token")
-
-	token, err := auth(tokenString)
-
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	token := r.Context().Value("user")
 
 	var ID int
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+	if claims, ok := token.(*jwt.Token).Claims.(jwt.MapClaims); ok && token.(*jwt.Token).Valid {
 		ID = int(claims["id"].(float64))
 	}
 
@@ -200,18 +179,10 @@ func DrawGachaHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetCharactersHandler(w http.ResponseWriter, r *http.Request) {
-	tokenString := r.Header.Get("x-token")
-
-	token, err := auth(tokenString)
-
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	token := r.Context().Value("user")
 
 	var user User
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+	if claims, ok := token.(*jwt.Token).Claims.(jwt.MapClaims); ok && token.(*jwt.Token).Valid {
 		user.ID = int(claims["id"].(float64))
 	}
 
@@ -268,14 +239,24 @@ func prepare_db() (*tomlConfig, error) {
 }
 
 func handlefuncs() *mux.Router {
+	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
+		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+			return []byte(os.Getenv("SIGNINGKEY")), nil
+		},
+		Extractor: func(r *http.Request) (string, error) {
+			token := r.Header.Get("x-token")
+			return token, nil
+		},
+		SigningMethod: jwt.SigningMethodHS256,
+	})
 	r := mux.NewRouter()
-	r.HandleFunc("/user/create", GetTokenHandler)
-	r.HandleFunc("/user/get", GetNameHandler)
-	r.HandleFunc("/user/update", UpdateHandler)
+	r.Handle("/user/create", http.HandlerFunc(GetTokenHandler))
+	r.Handle("/user/get", jwtMiddleware.Handler(http.HandlerFunc(GetNameHandler)))
+	r.Handle("/user/update", jwtMiddleware.Handler(http.HandlerFunc(UpdateHandler)))
 
-	r.HandleFunc("/gacha/draw", DrawGachaHandler)
+	r.Handle("/gacha/draw", jwtMiddleware.Handler(http.HandlerFunc(DrawGachaHandler)))
 
-	r.HandleFunc("/character/list", GetCharactersHandler)
+	r.Handle("/character/list", jwtMiddleware.Handler(http.HandlerFunc(GetCharactersHandler)))
 
 	return r
 }
