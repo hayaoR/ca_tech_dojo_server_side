@@ -259,6 +259,8 @@ func requestCharacters(token Token) (*httptest.ResponseRecorder, *http.Request) 
 
 func getGacha(writer *httptest.ResponseRecorder) (*Results, error) {
 	resp := writer.Result()
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("http status is not OK")
 	}
@@ -277,6 +279,8 @@ func getGacha(writer *httptest.ResponseRecorder) (*Results, error) {
 
 func getToken(writer *httptest.ResponseRecorder) (*Token, error) {
 	resp := writer.Result()
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("http status is not OK")
 	}
@@ -295,6 +299,8 @@ func getToken(writer *httptest.ResponseRecorder) (*Token, error) {
 
 func getUser(writer *httptest.ResponseRecorder) (*User, error) {
 	resp := writer.Result()
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("http status is not OK")
 	}
@@ -313,6 +319,8 @@ func getUser(writer *httptest.ResponseRecorder) (*User, error) {
 
 func getCharacters(writer *httptest.ResponseRecorder) (*Characters, error) {
 	resp := writer.Result()
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("http status is not OK")
 	}
