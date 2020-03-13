@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -10,29 +9,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/BurntSushi/toml"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/gorilla/mux"
 )
 
 func TestE2E(t *testing.T) {
-	var config tomlConfig
-	if _, err := toml.DecodeFile("setting/setting.toml", &config); err != nil {
-		t.Fatal(err)
-	}
-
-	var err error
-	db, err = sql.Open("mysql", config.SQLConfigParam)
+	_, err := prepare_db()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
 
 	serveMux := http.NewServeMux()
-	r := mux.NewRouter()
-	r.HandleFunc("/user/create", GetTokenHandler)
-	r.HandleFunc("/user/get", GetNameHandler)
-	r.HandleFunc("/user/update", UpdateHandler)
+	r := handlefuncs()
 	serveMux.Handle("/", r)
 
 	// post name
@@ -102,29 +89,14 @@ func TestE2E(t *testing.T) {
 }
 
 func TestGacha(t *testing.T) {
-	var config tomlConfig
-	if _, err := toml.DecodeFile("setting/setting.toml", &config); err != nil {
-		t.Fatal(err)
-	}
-
-	var err error
-	db, err = sql.Open("mysql", config.SQLConfigParam)
+	_, err := prepare_db()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
 
 	serveMux := http.NewServeMux()
-	r := mux.NewRouter()
-	r.HandleFunc("/user/create", GetTokenHandler)
-	r.HandleFunc("/user/get", GetNameHandler)
-	r.HandleFunc("/user/update", UpdateHandler)
-
-	r.HandleFunc("/gacha/draw", DrawGachaHandler)
-
-	r.HandleFunc("/character/list", GetCharactersHandler)
+	r := handlefuncs()
 	serveMux.Handle("/", r)
-
 	// post name
 	jsonStr := []byte(`
 	{

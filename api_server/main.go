@@ -235,29 +235,14 @@ func GetCharactersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func execute() error {
-	var config tomlConfig
-	if _, err := toml.DecodeFile("setting/setting.toml", &config); err != nil {
-		return err
-	}
-
-	var err error
-	db, err = sql.Open("mysql", config.SQLConfigParam)
+	config, err := prepare_db()
 	if err != nil {
 		return err
 	}
-	defer db.Close()
-
 	server := http.Server{
 		Addr: config.ServerURL,
 	}
-	r := mux.NewRouter()
-	r.HandleFunc("/user/create", GetTokenHandler)
-	r.HandleFunc("/user/get", GetNameHandler)
-	r.HandleFunc("/user/update", UpdateHandler)
-
-	r.HandleFunc("/gacha/draw", DrawGachaHandler)
-
-	r.HandleFunc("/character/list", GetCharactersHandler)
+	r := handlefuncs()
 	http.Handle("/", r)
 
 	if err := server.ListenAndServe(); err != nil {
@@ -267,6 +252,33 @@ func execute() error {
 	return nil
 }
 
+func prepare_db() (*tomlConfig, error) {
+	var config tomlConfig
+	if _, err := toml.DecodeFile("setting/setting.toml", &config); err != nil {
+		return nil, err
+	}
+
+	var err error
+	db, err = sql.Open("mysql", config.SQLConfigParam)
+	if err != nil {
+		return nil, err
+	}
+	//defer db.Close()
+	return &config, nil
+}
+
+func handlefuncs() *mux.Router {
+	r := mux.NewRouter()
+	r.HandleFunc("/user/create", GetTokenHandler)
+	r.HandleFunc("/user/get", GetNameHandler)
+	r.HandleFunc("/user/update", UpdateHandler)
+
+	r.HandleFunc("/gacha/draw", DrawGachaHandler)
+
+	r.HandleFunc("/character/list", GetCharactersHandler)
+
+	return r
+}
 func auth(tokenString string) (*jwt.Token, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
