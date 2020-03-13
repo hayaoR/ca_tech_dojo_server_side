@@ -69,13 +69,7 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 func GetNameHandler(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.Header.Get("x-token")
 
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return []byte(os.Getenv("SIGNINGKEY")), nil
-	})
+	token, err := auth(tokenString)
 
 	if err != nil {
 		log.Println(err)
@@ -113,13 +107,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	tokenString := r.Header.Get("x-token")
 
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return []byte(os.Getenv("SIGNINGKEY")), nil
-	})
+	token, err := auth(tokenString)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -144,13 +132,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 func DrawGachaHandler(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.Header.Get("x-token")
 
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return []byte(os.Getenv("SIGNINGKEY")), nil
-	})
+	token, err := auth(tokenString)
 
 	if err != nil {
 		log.Println(err)
@@ -219,13 +201,7 @@ func DrawGachaHandler(w http.ResponseWriter, r *http.Request) {
 func GetCharactersHandler(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.Header.Get("x-token")
 
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return []byte(os.Getenv("SIGNINGKEY")), nil
-	})
+	token, err := auth(tokenString)
 
 	if err != nil {
 		log.Println(err)
@@ -288,6 +264,18 @@ func execute() error {
 	}
 
 	return nil
+}
+
+func auth(tokenString string) (*jwt.Token, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return []byte(os.Getenv("SIGNINGKEY")), nil
+	})
+
+	return token, err
 }
 
 func main() {
