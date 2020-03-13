@@ -198,6 +198,18 @@ func TestGacha(t *testing.T) {
 	for _, v := range results.Results {
 		t.Log(v.CharacterID, v.Name)
 	}
+
+	writer, request = requestCharacters(*token)
+	serveMux.ServeHTTP(writer, request)
+	characters, err := getCharacters(writer)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, v := range characters.Characters {
+		t.Log(v.UserCharacterID, v.CharacterID, v.Name)
+	}
 }
 
 func postName(jsonStr []byte) (*httptest.ResponseRecorder, *http.Request) {
@@ -212,7 +224,7 @@ func postName(jsonStr []byte) (*httptest.ResponseRecorder, *http.Request) {
 
 func getName(token Token) (*httptest.ResponseRecorder, *http.Request) {
 	writer := httptest.NewRecorder()
-	request := httptest.NewRequest("Get", "/user/get", nil)
+	request := httptest.NewRequest("GET", "/user/get", nil)
 	request.Header.Set("accept", "application/json")
 	request.Header.Set("x-token", token.Token)
 
@@ -230,6 +242,15 @@ func updateUser(jsonStr []byte, token Token) (*httptest.ResponseRecorder, *http.
 func drawGacha(token Token, jsonStr []byte) (*httptest.ResponseRecorder, *http.Request) {
 	writer := httptest.NewRecorder()
 	request := httptest.NewRequest("POST", "/gacha/draw", bytes.NewBuffer([]byte(jsonStr)))
+	request.Header.Set("accept", "application/json")
+	request.Header.Set("x-token", token.Token)
+
+	return writer, request
+}
+
+func requestCharacters(token Token) (*httptest.ResponseRecorder, *http.Request) {
+	writer := httptest.NewRecorder()
+	request := httptest.NewRequest("GET", "/character/list", nil)
 	request.Header.Set("accept", "application/json")
 	request.Header.Set("x-token", token.Token)
 
@@ -288,4 +309,22 @@ func getUser(writer *httptest.ResponseRecorder) (*User, error) {
 	}
 
 	return &user, nil
+}
+
+func getCharacters(writer *httptest.ResponseRecorder) (*Characters, error) {
+	resp := writer.Result()
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("http status is not OK")
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	characters := Characters{}
+	if err := json.Unmarshal(body, &characters); err != nil {
+		return nil, err
+	}
+
+	return &characters, nil
 }
